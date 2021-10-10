@@ -22,6 +22,9 @@ sem_t table_three;
 sem_t table_four;
 sem_t table_five;
 
+int *queue;
+int queue_counter;
+
 int next_ticket = 0;
 int ticket_counter = 0;
 
@@ -54,6 +57,8 @@ void restaurant_init(int num_tables[5]) {
     sem_init(&table_four, 0, tables_for_size[4]);
     sem_init(&table_five, 0, tables_for_size[5]);
 
+    queue = (group_state*) malloc (sizeof(group_state*));
+
 }
 
 void restaurant_destroy(void) {
@@ -76,6 +81,8 @@ void restaurant_destroy(void) {
     sem_destroy(&table_three);
     sem_destroy(&table_four);
     sem_destroy(&table_five);
+
+    free(queue);
 }
 
 int request_for_table(group_state *state, int num_people) {
@@ -84,14 +91,17 @@ int request_for_table(group_state *state, int num_people) {
     // TODO
     on_enqueue();
     waitMutexForTable(num_people);
-    int tableChoped = chopeTableOccupancy(num_people);
-    postMutexForTable(num_people);
+    int tableChoped = chopeTableOccupancy(&state, num_people);
     return tableChoped;
 }
+
+// 1 1
 
 void leave_table(group_state *state) {
     // Write your code here.
     // TODO
+    vacate_table(state, state->num_people);
+    postMutexForTable(state->num_people);
 }
 
 void waitMutexForTable(int num_people) {
@@ -122,42 +132,77 @@ void postMutexForTable(int num_people) {
     }
 }
 
-int chopeTableOccupancy(int num_people) {
+void vacate_table(group_state* state, int num_people) {
+    if (num_people == 1) {
+        table_one_occupancy[state->table_number] = 0;
+    } else if (num_people == 2) {
+        table_two_occupancy[state->table_number] = 0;
+    } else if (num_people == 3) {
+        table_three_occupancy[state->table_number] = 0;
+    } else if (num_people == 4) {
+        table_four_occupancy[state->table_number] = 0;
+    } else if (num_people == 5) {
+        table_five_occupancy[state->table_number] = 0;
+    }
+    // checkQueue(state->num_people);
+}
+
+// void checkQueue(int num_people) {
+//     for (int i = 0; i < queue_counter - 1; i++) {
+//         group_state* state = queue[i];
+//         if (state->num_people == num_people) {
+//             request_for_table(state, state->num_people);
+//         }
+//     }
+// }
+
+int chopeTableOccupancy(group_state* state, int num_people) {
     if (num_people == 1) {
         for (int i = 0; i < tables_for_size[1]; i++) {
             if (table_one_occupancy[i] == 0) {
                 table_one_occupancy[i] = 1;
+                state->table_number = i;
                 return i;
             }
         }
     } else if (num_people == 2) {
         for (int i = 0; i < tables_for_size[2]; i++) {
-            if (table_one_occupancy[i] == 0) {
-                table_one_occupancy[i] = 1;
+            if (table_two_occupancy[i] == 0) {
+                table_two_occupancy[i] = 1;
+                state->table_number = i;
                 return tables_for_size[1] + i;
             }
         }
     } else if (num_people == 3) {
         for (int i = 0; i < tables_for_size[3]; i++) {
-            if (table_one_occupancy[i] == 0) {
-                table_one_occupancy[i] = 1;
+            if (table_three_occupancy[i] == 0) {
+                table_three_occupancy[i] = 1;
+                state->table_number = i;
                 return tables_for_size[1] + tables_for_size[2] + i;
             }
         }
     } else if (num_people == 4) {
         for (int i = 0; i < tables_for_size[4]; i++) {
-            if (table_one_occupancy[i] == 0) {
-                table_one_occupancy[i] = 1;
+            if (table_four_occupancy[i] == 0) {
+                table_four_occupancy[i] = 1;
+                state->table_number = i;
                 return tables_for_size[1] + tables_for_size[2] + tables_for_size[3] + i;
             }
         }
     } else if (num_people == 5) {
         for (int i = 0; i < tables_for_size[5]; i++) {
-            if (table_one_occupancy[i] == 0) {
-                table_one_occupancy[i] = 1;
+            if (table_five_occupancy[i] == 0) {
+                table_five_occupancy[i] = 1;
+                state->table_number = i;
                 return tables_for_size[1] + tables_for_size[2] + tables_for_size[3] + tables_for_size[4] + i;
             }
         }
-    } 
+    }
+
+    // Needs to queue
+    state->num_people = num_people;
+    state->queue_counter = queue_counter;
+    queue[queue_counter] = state;
+    queue_counter++;
 }
 
