@@ -59,6 +59,12 @@ void restaurant_init(int num_tables[5]) {
 void restaurant_destroy(void) {
     // Write deinitialization code here (called once at the end of the program).
     // TODO
+    free(table_one_occupancy);
+    free(table_two_occupancy);
+    free(table_three_occupancy);
+    free(table_four_occupancy);
+    free(table_five_occupancy);
+
     pthread_mutex_destroy(&lock_one);
     pthread_mutex_destroy(&lock_two);
     pthread_mutex_destroy(&lock_three);
@@ -78,9 +84,9 @@ int request_for_table(group_state *state, int num_people) {
     // TODO
     on_enqueue();
     waitMutexForTable(num_people);
-
-
-    return 0;
+    int tableChoped = chopeTableOccupancy(num_people);
+    postMutexForTable(num_people);
+    return tableChoped;
 }
 
 void leave_table(group_state *state) {
@@ -102,8 +108,56 @@ void waitMutexForTable(int num_people) {
     }
 }
 
-void findTableNumber(int num_people) {
+void postMutexForTable(int num_people) {
     if (num_people == 1) {
-        
+        sem_post(&table_one);
+    } else if (num_people == 2) {
+        sem_post(&table_two);
+    } else if (num_people == 3) {
+        sem_post(&table_three);
+    } else if (num_people == 4) {
+        sem_post(&table_four);
+    } else if (num_people == 5) {
+        sem_post(&table_five);
     }
 }
+
+int chopeTableOccupancy(int num_people) {
+    if (num_people == 1) {
+        for (int i = 0; i < tables_for_size[1]; i++) {
+            if (table_one_occupancy[i] == 0) {
+                table_one_occupancy[i] = 1;
+                return i;
+            }
+        }
+    } else if (num_people == 2) {
+        for (int i = 0; i < tables_for_size[2]; i++) {
+            if (table_one_occupancy[i] == 0) {
+                table_one_occupancy[i] = 1;
+                return tables_for_size[1] + i;
+            }
+        }
+    } else if (num_people == 3) {
+        for (int i = 0; i < tables_for_size[3]; i++) {
+            if (table_one_occupancy[i] == 0) {
+                table_one_occupancy[i] = 1;
+                return tables_for_size[1] + tables_for_size[2] + i;
+            }
+        }
+    } else if (num_people == 4) {
+        for (int i = 0; i < tables_for_size[4]; i++) {
+            if (table_one_occupancy[i] == 0) {
+                table_one_occupancy[i] = 1;
+                return tables_for_size[1] + tables_for_size[2] + tables_for_size[3] + i;
+            }
+        }
+    } else if (num_people == 5) {
+        for (int i = 0; i < tables_for_size[5]; i++) {
+            if (table_one_occupancy[i] == 0) {
+                table_one_occupancy[i] = 1;
+                return tables_for_size[1] + tables_for_size[2] + tables_for_size[3] + tables_for_size[4] + i;
+            }
+        }
+    } 
+}
+
