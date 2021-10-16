@@ -17,7 +17,6 @@ struct Queue* createQueue()
     queue->capacity = 1000;
     queue->front = queue->size = 0;
  
-    // This is important, see the enqueue
     queue->rear = queue->capacity - 1;
     queue->array = (pthread_cond_t**)malloc(
         queue->capacity * sizeof(pthread_cond_t*));
@@ -92,37 +91,15 @@ int count_tables[5];
 pthread_mutex_t mutex_tables[5];
 
 
-// int getTableSize(int table_id) {
-//     for (int i = 0; i < 5; i++) {
-//         table_id -= count_tables[i];
-//         if (table_id <= 0) {
-//             return i + 1;
-//         }
-//     }
-// }
-
-// int getTableId(int num_people, int index) {
-//     int res = 0;
-//     for (int i = 0; i < num_people - 1; i++) {
-//         res += count_tables[i];
-//     }
-//     return res + index;
-// }
-
 int reserveVacantTable(int num_people) {
     int index = num_people - 1;
     int counter = 0;
     for (int j = 0; j < num_people - 1; j++) {
         counter += count_tables[j];
-        // printf("\nstarting for size: %i: ", count_tables[j]);
-        // for (int k = 0; k < count_tables[j]; k++) {
-        //     printf("%i,", vacancy_tables[j][k]);
-        // }
     }
     for (int i = 0; i < count_tables[i]; i++) {
         if (vacancy_tables[index][i] == 1) {
             vacancy_tables[index][i] = 0;
-            // printf("\nReserving %i, %i for id %i", num_people, i, counter + i);
             return counter + i;
         }
     }
@@ -130,10 +107,8 @@ int reserveVacantTable(int num_people) {
 }
 
 void releaseTable(int table_id) {
-    // printf("original %i", table_id);
     if (table_id < count_tables[0]) {
         vacancy_tables[0][table_id] = 1;
-        // printf("\nReleasing 1, %i", table_id);
         return; 
     }
 
@@ -141,7 +116,6 @@ void releaseTable(int table_id) {
         table_id -= count_tables[i - 1];
         if (table_id < count_tables[i]) {
             vacancy_tables[i][table_id] = 1;
-            // printf("\nReleasing %i, %i", i+1, table_id);
             return;
         }
     }
@@ -180,6 +154,17 @@ void restaurant_destroy(void) {
         free(queues[i]);
         free(vacancy_tables[i]);
     }
+    pthread_cond_destroy(&cond1);
+    pthread_cond_destroy(&cond2);
+    pthread_cond_destroy(&cond3);
+    pthread_cond_destroy(&cond4);
+    pthread_cond_destroy(&cond5);
+
+    pthread_mutex_destroy(&lock1);
+    pthread_mutex_destroy(&lock2);
+    pthread_mutex_destroy(&lock3);
+    pthread_mutex_destroy(&lock4);
+    pthread_mutex_destroy(&lock5);
 }
 
 int request_for_table(group_state *state, int num_people) {
@@ -197,10 +182,8 @@ int request_for_table(group_state *state, int num_people) {
         pthread_cond_t cond1 = PTHREAD_COND_INITIALIZER;
         pthread_cond_t* cond = &cond1;
         enqueue(queues[index], cond);
-        // printf("cond address a: %p \n", cond);
         pthread_cond_wait(cond, &lock);
         res = reserveVacantTable(num_people);
-        // printf("cond address c: %p \n", cond);
     }
     state->table_id = res;
     pthread_mutex_unlock(&lock);
@@ -216,9 +199,7 @@ void leave_table(group_state *state) {
     releaseTable(state->table_id);
 
     if (cond != 0) {
-        // printf("cond address b1: %p \n", cond);
         pthread_cond_signal(cond);
-        // printf("cond address b2: %p \n", cond);
     }
     pthread_mutex_unlock(&lock);
 }

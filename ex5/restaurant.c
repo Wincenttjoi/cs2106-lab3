@@ -155,6 +155,8 @@ void restaurant_destroy(void) {
         free(queues[i]);
         free(vacancy_tables[i]);
     }
+
+    pthread_mutex_destroy(&lock);
 }
 
 int request_for_table(group_state *state, int num_people) {
@@ -176,6 +178,7 @@ int request_for_table(group_state *state, int num_people) {
         pthread_cond_wait(cond, &lock);
         res = reserveVacantTable(num_people);
         // printf("cond address c: %p \n", cond);
+        pthread_cond_destroy(&cond1);
     }
     state->table_id = res;
     pthread_mutex_unlock(&lock);
