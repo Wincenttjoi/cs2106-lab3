@@ -1,208 +1,224 @@
 #include "restaurant.h"
+#include <stdio.h>
+#include <stdlib.h>
 #include <pthread.h>
-#include <semaphore.h>
+
+// A structure to represent a queue
+struct Queue {
+    unsigned front, rear, size;
+    unsigned capacity;
+    pthread_cond_t** array;
+};
+
+struct Queue* createQueue()
+{
+    struct Queue* queue = (struct Queue*)malloc(
+        sizeof(struct Queue));
+    queue->capacity = 1000;
+    queue->front = queue->size = 0;
+ 
+    // This is important, see the enqueue
+    queue->rear = queue->capacity - 1;
+    queue->array = (pthread_cond_t**)malloc(
+        queue->capacity * sizeof(pthread_cond_t*));
+    return queue;
+}
+ 
+int isFull(struct Queue* queue)
+{
+    return (queue->size == queue->capacity);
+}
+ 
+// Queue is empty when size is 0
+int isEmpty(struct Queue* queue)
+{
+    return (queue->size == 0);
+}
+
+void enqueue(struct Queue* queue, pthread_cond_t* item)
+{
+    if (isFull(queue))
+        return;
+    queue->rear = (queue->rear + 1)
+                  % queue->capacity;
+    queue->array[queue->rear] = item;
+    queue->size = queue->size + 1;
+    // printf("%d enqueued to queue\n", item);
+}
+ 
+pthread_cond_t* dequeue(struct Queue* queue)
+{
+    if (isEmpty(queue))
+        return NULL;
+    pthread_cond_t* item = queue->array[queue->front];
+    queue->front = (queue->front + 1)
+                   % queue->capacity;
+    queue->size = queue->size - 1;
+    return item;
+}
+
+// Function to remove an item from queue.
+// It changes front and size
+pthread_cond_t* peek(struct Queue* queue)
+{
+    if (isEmpty(queue))
+        return NULL;
+    pthread_cond_t* item = queue->array[queue->front];
+    return item;
+}
+
+
 
 // You can declare global variables here
-int tables_for_size[6];
-int *table_one_occupancy;
-int *table_two_occupancy;
-int *table_three_occupancy;
-int *table_four_occupancy;
-int *table_five_occupancy;
 
-pthread_mutex_t lock_one;
-pthread_mutex_t lock_two;
-pthread_mutex_t lock_three;
-pthread_mutex_t lock_four;
-pthread_mutex_t lock_five;
+// // Declaration of thread condition variable
+pthread_cond_t cond1 = PTHREAD_COND_INITIALIZER;
+pthread_cond_t cond2 = PTHREAD_COND_INITIALIZER;
+pthread_cond_t cond3 = PTHREAD_COND_INITIALIZER;
+pthread_cond_t cond4 = PTHREAD_COND_INITIALIZER;
+pthread_cond_t cond5 = PTHREAD_COND_INITIALIZER;
 
-sem_t table_one;
-sem_t table_two;
-sem_t table_three;
-sem_t table_four;
-sem_t table_five;
+// // declaring mutex
+pthread_mutex_t lock1 = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t lock2 = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t lock3 = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t lock4 = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t lock5 = PTHREAD_MUTEX_INITIALIZER;
 
-int *queue;
-int queue_counter;
+int *vacant1, *vacant2,*vacant3,*vacant4,*vacant5 = 0;
+int* vacancy_tables[5];
+struct Queue* queues[5];
+int count_tables[5];
+pthread_mutex_t mutex_tables[5];
 
-int next_ticket = 0;
-int ticket_counter = 0;
+
+// int getTableSize(int table_id) {
+//     for (int i = 0; i < 5; i++) {
+//         table_id -= count_tables[i];
+//         if (table_id <= 0) {
+//             return i + 1;
+//         }
+//     }
+// }
+
+// int getTableId(int num_people, int index) {
+//     int res = 0;
+//     for (int i = 0; i < num_people - 1; i++) {
+//         res += count_tables[i];
+//     }
+//     return res + index;
+// }
+
+int reserveVacantTable(int num_people) {
+    int index = num_people - 1;
+    int counter = 0;
+    for (int j = 0; j < num_people - 1; j++) {
+        counter += count_tables[j];
+        // printf("\nstarting for size: %i: ", count_tables[j]);
+        // for (int k = 0; k < count_tables[j]; k++) {
+        //     printf("%i,", vacancy_tables[j][k]);
+        // }
+    }
+    for (int i = 0; i < count_tables[i]; i++) {
+        if (vacancy_tables[index][i] == 1) {
+            vacancy_tables[index][i] = 0;
+            // printf("\nReserving %i, %i for id %i", num_people, i, counter + i);
+            return counter + i;
+        }
+    }
+    return -1;
+}
+
+void releaseTable(int table_id) {
+    // printf("original %i", table_id);
+    if (table_id < count_tables[0]) {
+        vacancy_tables[0][table_id] = 1;
+        // printf("\nReleasing 1, %i", table_id);
+        return; 
+    }
+
+    for (int i = 1; i < 5; i++) {
+        table_id -= count_tables[i - 1];
+        if (table_id < count_tables[i]) {
+            vacancy_tables[i][table_id] = 1;
+            // printf("\nReleasing %i, %i", i+1, table_id);
+            return;
+        }
+    }
+}
 
 void restaurant_init(int num_tables[5]) {
     // Write initialization code here (called once at the start of the program).
     // It is guaranteed that num_tables is an array of length 5.
     // TODO
-    // 0 2 3 1 4 2: Indexes follow the table size
-    tables_for_size[0] = 0;
-    int counter = 0;
+    vacancy_tables[0] = vacant1;
+    vacancy_tables[1] = vacant2;
+    vacancy_tables[2] = vacant3;
+    vacancy_tables[3] = vacant3;
+    vacancy_tables[4] = vacant3;
+
+    mutex_tables[0] = lock1;
+    mutex_tables[1] = lock2;
+    mutex_tables[2] = lock3;
+    mutex_tables[3] = lock4;
+    mutex_tables[4] = lock5;
+
+
     for (int i = 0; i < 5; i++) {
-        tables_for_size[i + 1] = num_tables[i];
+        count_tables[i] = num_tables[i];
+        vacancy_tables[i] = (int*) calloc(num_tables[i], sizeof(int));
+        queues[i] = createQueue();
+        for (int j = 0; j <num_tables[i]; j++) {
+            vacancy_tables[i][j] = 1;
+        }
     }
-    // 1 1
-    table_one_occupancy = (int*) malloc(tables_for_size[1] * sizeof(int));
-    table_two_occupancy = (int*) malloc(tables_for_size[2] * sizeof(int));
-    table_three_occupancy = (int*) malloc(tables_for_size[3] * sizeof(int));
-    table_four_occupancy = (int*) malloc(tables_for_size[4] * sizeof(int));
-    table_five_occupancy = (int*) malloc(tables_for_size[5] * sizeof(int));
-
-    pthread_mutex_init(&lock_one, NULL);
-    pthread_mutex_init(&lock_two, NULL);
-    pthread_mutex_init(&lock_three, NULL);
-    pthread_mutex_init(&lock_four, NULL);
-    pthread_mutex_init(&lock_five, NULL);
-
-    sem_init(&table_one, 0, tables_for_size[1]);
-    sem_init(&table_two, 0, tables_for_size[2]);
-    sem_init(&table_three, 0, tables_for_size[3]);
-    sem_init(&table_four, 0, tables_for_size[4]);
-    sem_init(&table_five, 0, tables_for_size[5]);
-
-    queue = (group_state*) malloc (sizeof(group_state*));
-
 }
 
 void restaurant_destroy(void) {
-    // Write deinitialization code here (called once at the end of the program).
-    // TODO
-    free(table_one_occupancy);
-    free(table_two_occupancy);
-    free(table_three_occupancy);
-    free(table_four_occupancy);
-    free(table_five_occupancy);
-
-    pthread_mutex_destroy(&lock_one);
-    pthread_mutex_destroy(&lock_two);
-    pthread_mutex_destroy(&lock_three);
-    pthread_mutex_destroy(&lock_four);
-    pthread_mutex_destroy(&lock_five);
-
-    sem_destroy(&table_one);
-    sem_destroy(&table_two);
-    sem_destroy(&table_three);
-    sem_destroy(&table_four);
-    sem_destroy(&table_five);
-
-    free(queue);
+    for (int i = 4; i >= 0; i--) {
+        free(queues[i] -> array);
+        free(queues[i]);
+        free(vacancy_tables[i]);
+    }
 }
 
 int request_for_table(group_state *state, int num_people) {
-    // Write your code here.
-    // Return the id of the table you want this group to sit at.
-    // TODO
+    int res;
+    // store info into state
+    state->group_size = num_people;
+    // retrieve mutex and conds of tablesize
+    int index = num_people - 1;
+    pthread_mutex_t lock = mutex_tables[index];
+    pthread_mutex_lock(&lock);
+    res = reserveVacantTable(num_people);
+        
     on_enqueue();
-    waitMutexForTable(num_people);
-    int tableChoped = chopeTableOccupancy(&state, num_people);
-    return tableChoped;
+    if (res == -1) {
+        pthread_cond_t cond1 = PTHREAD_COND_INITIALIZER;
+        pthread_cond_t* cond = &cond1;
+        enqueue(queues[index], cond);
+        // printf("cond address a: %p \n", cond);
+        pthread_cond_wait(cond, &lock);
+        res = reserveVacantTable(num_people);
+        // printf("cond address c: %p \n", cond);
+    }
+    state->table_id = res;
+    pthread_mutex_unlock(&lock);
+    return res;
 }
-
-// 1 1
 
 void leave_table(group_state *state) {
-    // Write your code here.
-    // TODO
-    vacate_table(state, state->num_people);
-    postMutexForTable(state->num_people);
-}
+    int index = state->group_size - 1;
+    pthread_mutex_t lock = mutex_tables[index];
+    pthread_mutex_lock(&lock);
 
-void waitMutexForTable(int num_people) {
-    if (num_people == 1) {
-        sem_wait(&table_one);
-    } else if (num_people == 2) {
-        sem_wait(&table_two);
-    } else if (num_people == 3) {
-        sem_wait(&table_three);
-    } else if (num_people == 4) {
-        sem_wait(&table_four);
-    } else if (num_people == 5) {
-        sem_wait(&table_five);
+    pthread_cond_t* cond = dequeue(queues[index]);
+    releaseTable(state->table_id);
+
+    if (cond != 0) {
+        // printf("cond address b1: %p \n", cond);
+        pthread_cond_signal(cond);
+        // printf("cond address b2: %p \n", cond);
     }
+    pthread_mutex_unlock(&lock);
 }
-
-void postMutexForTable(int num_people) {
-    if (num_people == 1) {
-        sem_post(&table_one);
-    } else if (num_people == 2) {
-        sem_post(&table_two);
-    } else if (num_people == 3) {
-        sem_post(&table_three);
-    } else if (num_people == 4) {
-        sem_post(&table_four);
-    } else if (num_people == 5) {
-        sem_post(&table_five);
-    }
-}
-
-void vacate_table(group_state* state, int num_people) {
-    if (num_people == 1) {
-        table_one_occupancy[state->table_number] = 0;
-    } else if (num_people == 2) {
-        table_two_occupancy[state->table_number] = 0;
-    } else if (num_people == 3) {
-        table_three_occupancy[state->table_number] = 0;
-    } else if (num_people == 4) {
-        table_four_occupancy[state->table_number] = 0;
-    } else if (num_people == 5) {
-        table_five_occupancy[state->table_number] = 0;
-    }
-    // checkQueue(state->num_people);
-}
-
-// void checkQueue(int num_people) {
-//     for (int i = 0; i < queue_counter - 1; i++) {
-//         group_state* state = queue[i];
-//         if (state->num_people == num_people) {
-//             request_for_table(state, state->num_people);
-//         }
-//     }
-// }
-
-int chopeTableOccupancy(group_state* state, int num_people) {
-    if (num_people == 1) {
-        for (int i = 0; i < tables_for_size[1]; i++) {
-            if (table_one_occupancy[i] == 0) {
-                table_one_occupancy[i] = 1;
-                state->table_number = i;
-                return i;
-            }
-        }
-    } else if (num_people == 2) {
-        for (int i = 0; i < tables_for_size[2]; i++) {
-            if (table_two_occupancy[i] == 0) {
-                table_two_occupancy[i] = 1;
-                state->table_number = i;
-                return tables_for_size[1] + i;
-            }
-        }
-    } else if (num_people == 3) {
-        for (int i = 0; i < tables_for_size[3]; i++) {
-            if (table_three_occupancy[i] == 0) {
-                table_three_occupancy[i] = 1;
-                state->table_number = i;
-                return tables_for_size[1] + tables_for_size[2] + i;
-            }
-        }
-    } else if (num_people == 4) {
-        for (int i = 0; i < tables_for_size[4]; i++) {
-            if (table_four_occupancy[i] == 0) {
-                table_four_occupancy[i] = 1;
-                state->table_number = i;
-                return tables_for_size[1] + tables_for_size[2] + tables_for_size[3] + i;
-            }
-        }
-    } else if (num_people == 5) {
-        for (int i = 0; i < tables_for_size[5]; i++) {
-            if (table_five_occupancy[i] == 0) {
-                table_five_occupancy[i] = 1;
-                state->table_number = i;
-                return tables_for_size[1] + tables_for_size[2] + tables_for_size[3] + tables_for_size[4] + i;
-            }
-        }
-    }
-
-    // Needs to queue
-    state->num_people = num_people;
-    state->queue_counter = queue_counter;
-    queue[queue_counter] = state;
-    queue_counter++;
-}
-
