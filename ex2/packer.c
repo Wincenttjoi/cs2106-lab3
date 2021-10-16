@@ -70,16 +70,12 @@ int pack_ball(int colour, int id) {
 int handleColourOne(int id) {
     int res;
     sem_wait(&s1_count);
-    int sem_val_s1;
-    int sem_val_count1;
 
     sem_wait(&s1_signal);
     id_s1[count_1] = id;
     count_1++;
     sem_post(&s1_signal);
 
-    sem_getvalue(&s1, &sem_val_s1);
-    sem_getvalue(&s1_count, &sem_val_count1);
     if (count_1 == N) {
         sem_post(&s1);
     }
@@ -104,16 +100,12 @@ int handleColourOne(int id) {
 int handleColourTwo(int id) {
     int res;
     sem_wait(&s2_count);
-    int sem_val_s2;
-    int sem_val_count2;
 
     sem_wait(&s2_signal);
     id_s2[count_2] = id;
     count_2++;
     sem_post(&s2_signal);
 
-    sem_getvalue(&s2, &sem_val_s2);
-    sem_getvalue(&s2_count, &sem_val_count2);
     if (count_2 == N) {
         sem_post(&s2);
     }
@@ -138,16 +130,12 @@ int handleColourTwo(int id) {
 int handleColourThree(int id) {
     int res;
     sem_wait(&s3_count);
-    int sem_val_s3;
-    int sem_val_count3;
 
     sem_wait(&s3_signal);
     id_s3[count_3] = id;
     count_3++;
     sem_post(&s3_signal);
 
-    sem_getvalue(&s3, &sem_val_s3);
-    sem_getvalue(&s3_count, &sem_val_count3);
     if (count_3 == N) {
         sem_post(&s3);
     }
