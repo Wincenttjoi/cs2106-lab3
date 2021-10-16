@@ -156,7 +156,7 @@ int pack_ball(int colour, int id) {
         break;
 
         default:
-            printf("Unidentified colour");
+            printf("Colour does not exists, error!");
     }
     return res;
 }
