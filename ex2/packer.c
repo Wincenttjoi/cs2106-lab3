@@ -33,7 +33,7 @@ void packer_init(void) {
     sem_init(&s3_count, 0, 2);
 }
 
-int getOthers(int* arr, int i) {
+int getOtherIds(int* arr, int i) {
     for (int j = 0; j < N; j++) {
         if (arr[j] != i) {
             return arr[j];
@@ -56,107 +56,115 @@ void packer_destroy(void) {
 
 int pack_ball(int colour, int id) {
     // Write your code here.
-    int res;
-    switch(colour) {
-        case 1: ;
-        sem_wait(&s1_count);
-        int sem_val_s1;
-        int sem_val_count1;
-    
-        sem_wait(&s1_signal);
-        id_s1[count_1] = id;
-        count_1++;
-        sem_post(&s1_signal);
-
-        sem_getvalue(&s1, &sem_val_s1);
-        sem_getvalue(&s1_count, &sem_val_count1);
-        if (count_1 == N) {
-            sem_post(&s1);
-        }
-        sem_wait(&s1);
-
-
-        sem_wait(&s1_signal);
-        count_1--;
-        if (count_1 != 0) {
-            sem_post(&s1);
-        }
-        res = getOthers(id_s1, id);
-        if (count_1 == 0) {
-            for (int i = 0; i < N; i++) {
-                sem_post(&s1_count);
-            }
-        }
-        sem_post(&s1_signal);
-
-        break;
-
-        case 2: ;
-        sem_wait(&s2_count);
-        int sem_val_s2;
-        int sem_val_count2;
-    
-        sem_wait(&s2_signal);
-        id_s2[count_2] = id;
-        count_2++;
-        sem_post(&s2_signal);
-
-        sem_getvalue(&s2, &sem_val_s2);
-        sem_getvalue(&s2_count, &sem_val_count2);
-        if (count_2 == N) {
-            sem_post(&s2);
-        }
-        sem_wait(&s2);
-
-
-        sem_wait(&s2_signal);
-        count_2--;
-        if (count_2 != 0) {
-            sem_post(&s2);
-        }
-        res = getOthers(id_s2, id);
-        if (count_2 == 0) {
-            for (int i = 0; i < N; i++) {
-                sem_post(&s2_count);
-            }
-        }
-        sem_post(&s2_signal);
-        break;
-
-        case 3: ;
-        sem_wait(&s3_count);
-        int sem_val_s3;
-        int sem_val_count3;
-    
-        sem_wait(&s3_signal);
-        id_s3[count_3] = id;
-        count_3++;
-        sem_post(&s3_signal);
-
-        sem_getvalue(&s3, &sem_val_s3);
-        sem_getvalue(&s3_count, &sem_val_count3);
-        if (count_3 == N) {
-            sem_post(&s3);
-        }
-        sem_wait(&s3);
-
-
-        sem_wait(&s3_signal);
-        count_3--;
-        if (count_3 != 0) {
-            sem_post(&s3);
-        }
-        res = getOthers(id_s3, id);
-        if (count_3 == 0) {
-            for (int i = 0; i < N; i++) {
-                sem_post(&s3_count);
-            }
-        }
-        sem_post(&s3_signal);
-        break;
-
-        default:
-            printf("Colour does not exists, error!");
+    if (colour == 1) {
+        return handleColourOne(id);
+    } else if (colour == 2) {
+        return handleColourTwo(id);
+    } else if (colour == 3) {
+        return handleColourThree(id);
+    } else {
+        printf("Error, invalid colour!");
     }
+}
+
+int handleColourOne(int id) {
+    int res;
+    sem_wait(&s1_count);
+    int sem_val_s1;
+    int sem_val_count1;
+
+    sem_wait(&s1_signal);
+    id_s1[count_1] = id;
+    count_1++;
+    sem_post(&s1_signal);
+
+    sem_getvalue(&s1, &sem_val_s1);
+    sem_getvalue(&s1_count, &sem_val_count1);
+    if (count_1 == N) {
+        sem_post(&s1);
+    }
+    sem_wait(&s1);
+
+
+    sem_wait(&s1_signal);
+    count_1--;
+    if (count_1 != 0) {
+        sem_post(&s1);
+    }
+    res = getOtherIds(id_s1, id);
+    if (count_1 == 0) {
+        for (int i = 0; i < N; i++) {
+            sem_post(&s1_count);
+        }
+    }
+    sem_post(&s1_signal);
+    return res;
+}
+
+int handleColourTwo(int id) {
+    int res;
+    sem_wait(&s2_count);
+    int sem_val_s2;
+    int sem_val_count2;
+
+    sem_wait(&s2_signal);
+    id_s2[count_2] = id;
+    count_2++;
+    sem_post(&s2_signal);
+
+    sem_getvalue(&s2, &sem_val_s2);
+    sem_getvalue(&s2_count, &sem_val_count2);
+    if (count_2 == N) {
+        sem_post(&s2);
+    }
+    sem_wait(&s2);
+
+
+    sem_wait(&s2_signal);
+    count_2--;
+    if (count_2 != 0) {
+        sem_post(&s2);
+    }
+    res = getOtherIds(id_s2, id);
+    if (count_2 == 0) {
+        for (int i = 0; i < N; i++) {
+            sem_post(&s2_count);
+        }
+    }
+    sem_post(&s2_signal);
+    return res;
+}
+
+int handleColourThree(int id) {
+    int res;
+    sem_wait(&s3_count);
+    int sem_val_s3;
+    int sem_val_count3;
+
+    sem_wait(&s3_signal);
+    id_s3[count_3] = id;
+    count_3++;
+    sem_post(&s3_signal);
+
+    sem_getvalue(&s3, &sem_val_s3);
+    sem_getvalue(&s3_count, &sem_val_count3);
+    if (count_3 == N) {
+        sem_post(&s3);
+    }
+    sem_wait(&s3);
+
+
+    sem_wait(&s3_signal);
+    count_3--;
+    if (count_3 != 0) {
+        sem_post(&s3);
+    }
+    res = getOtherIds(id_s3, id);
+    if (count_3 == 0) {
+        for (int i = 0; i < N; i++) {
+            sem_post(&s3_count);
+        }
+    }
+    sem_post(&s3_signal);
     return res;
 }
