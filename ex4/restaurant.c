@@ -12,12 +12,8 @@ pthread_mutex_t lock3 = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t lock4 = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t lock5 = PTHREAD_MUTEX_INITIALIZER;
 
-// // Declaration of thread condition variable
 pthread_cond_t cond1 = PTHREAD_COND_INITIALIZER;
-pthread_cond_t cond2 = PTHREAD_COND_INITIALIZER;
-pthread_cond_t cond3 = PTHREAD_COND_INITIALIZER;
-pthread_cond_t cond4 = PTHREAD_COND_INITIALIZER;
-pthread_cond_t cond5 = PTHREAD_COND_INITIALIZER;
+
 
 int* vacancy_tables[5];
 int count_tables[5];
@@ -140,12 +136,8 @@ void restaurant_destroy(void) {
         free(queues[i]);
         free(vacancy_tables[i]);
     }
-    pthread_cond_destroy(&cond1);
-    pthread_cond_destroy(&cond2);
-    pthread_cond_destroy(&cond3);
-    pthread_cond_destroy(&cond4);
-    pthread_cond_destroy(&cond5);
 
+    pthread_cond_destroy(&cond1);
     pthread_mutex_destroy(&lock1);
     pthread_mutex_destroy(&lock2);
     pthread_mutex_destroy(&lock3);
@@ -171,7 +163,6 @@ int request_for_table(group_state *state, int num_people) {
 
     on_enqueue();
     if (res == -1) {
-        pthread_cond_t cond1 = PTHREAD_COND_INITIALIZER;
         pthread_cond_t* cond = &cond1;
         enqueue(queues[index], cond);
         pthread_cond_wait(cond, lock);

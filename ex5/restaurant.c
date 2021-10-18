@@ -90,7 +90,7 @@ int reserveTable(int num_people) {
         // }
     }
     for (int i = index; i < 5; i++) {
-        for (int j = 0; j < count_tables[i]; j++) {
+        for (int j = 0; j < count_tables[index]; j++) {
             if (vacancy_tables[i][j] == 1) {
                 vacancy_tables[i][j] = 0;
                 // printf("\nReserving %i, %i for id %i", i+1, j+1, counter+j);
