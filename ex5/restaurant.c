@@ -4,10 +4,17 @@
 #include <pthread.h>
 #include <unistd.h>
 
+// // declaring mutex
+pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+
+int* vacancy_tables[5];
+struct Queue* queues[5];
+int count_tables[5];
+
 // A structure to represent a queue
 struct Queue {
-    unsigned front, rear, size;
     unsigned capacity;
+    unsigned head, tail, size;
     pthread_cond_t** array;
 };
 
@@ -16,41 +23,31 @@ struct Queue* createQueue()
     struct Queue* queue = (struct Queue*)malloc(
         sizeof(struct Queue));
     queue->capacity = 1000;
-    queue->front = queue->size = 0;
+    queue->head = queue->size = 0;
  
     // This is important, see the enqueue
-    queue->rear = queue->capacity - 1;
+    queue->tail = queue->capacity - 1;
     queue->array = (pthread_cond_t**)malloc(
         queue->capacity * sizeof(pthread_cond_t*));
     return queue;
 }
 
-int isFull(struct Queue* queue)
-{
-    return (queue->size == queue->capacity);
-}
- 
-int isEmpty(struct Queue* queue)
-{
-    return (queue->size == 0);
-}
-
 void enqueue(struct Queue* queue, pthread_cond_t* item)
 {
-    if (isFull(queue))
+    if (queue->size == queue->capacity)
         return;
-    queue->rear = (queue->rear + 1)
+    queue->tail = (queue->tail + 1)
                   % queue->capacity;
-    queue->array[queue->rear] = item;
+    queue->array[queue->tail] = item;
     queue->size = queue->size + 1;
 }
  
 pthread_cond_t* dequeue(struct Queue* queue)
 {
-    if (isEmpty(queue))
+    if (queue->size == 0)
         return NULL;
-    pthread_cond_t* item = queue->array[queue->front];
-    queue->front = (queue->front + 1)
+    pthread_cond_t* item = queue->array[queue->head];
+    queue->head = (queue->head + 1)
                    % queue->capacity;
     queue->size = queue->size - 1;
     return item;
@@ -58,20 +55,11 @@ pthread_cond_t* dequeue(struct Queue* queue)
 
 pthread_cond_t* peek(struct Queue* queue)
 {
-    if (isEmpty(queue))
+    if (queue->size == 0)
         return NULL;
-    pthread_cond_t* item = queue->array[queue->front];
+    pthread_cond_t* item = queue->array[queue->head];
     return item;
 }
-
-// // declaring mutex
-pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-
-int *vacant1, *vacant2,*vacant3,*vacant4, *vacant5 = 0;
-int* vacancy_tables[5];
-struct Queue* queues[5];
-int count_tables[5];
-// pthread_mutex_t mutex_tables[5];
 
 
 int getTableSize(int table_id) {
@@ -91,7 +79,7 @@ int getTableId(int num_people, int index) {
     return res + index;
 }
 
-int reserveVacantTable(int num_people) {
+int reserveTable(int num_people) {
     int index = num_people - 1;
     int counter = 0;
     for (int j = 0; j < index; j++) {
@@ -114,7 +102,7 @@ int reserveVacantTable(int num_people) {
     return -1;
 }
 
-void releaseTable(int table_id) {
+void unReserveTable(int table_id) {
     // printf("original %i", table_id);
     if (table_id < count_tables[0]) {
         vacancy_tables[0][table_id] = 1;
@@ -133,15 +121,9 @@ void releaseTable(int table_id) {
 }
 
 void restaurant_init(int num_tables[5]) {
-    vacancy_tables[0] = vacant1;
-    vacancy_tables[1] = vacant2;
-    vacancy_tables[2] = vacant3;
-    vacancy_tables[3] = vacant3;
-    vacancy_tables[4] = vacant3;
-
     for (int i = 0; i < 5; i++) {
         count_tables[i] = num_tables[i];
-        vacancy_tables[i] = (int*) calloc(num_tables[i], sizeof(int));
+        vacancy_tables[i] = (int*) malloc(num_tables[i] * sizeof(int));
         queues[i] = createQueue();
         for (int j = 0; j <num_tables[i]; j++) {
             vacancy_tables[i][j] = 1;
@@ -167,7 +149,7 @@ int request_for_table(group_state *state, int num_people) {
     int index = num_people - 1;
     // pthread_mutex_t lock = mutex_tables[index];
     pthread_mutex_lock(&lock);
-    res = reserveVacantTable(num_people);
+    res = reserveTable(num_people);
         
     on_enqueue();
     if (res == -1) {
@@ -176,7 +158,7 @@ int request_for_table(group_state *state, int num_people) {
         enqueue(queues[index], cond);
         // printf("cond address a: %p \n", cond);
         pthread_cond_wait(cond, &lock);
-        res = reserveVacantTable(num_people);
+        res = reserveTable(num_people);
         // printf("cond address c: %p \n", cond);
         pthread_cond_destroy(&cond1);
     }
@@ -190,7 +172,7 @@ void leave_table(group_state *state) {
     // pthread_mutex_t lock = mutex_tables[index];
 
     pthread_mutex_lock(&lock);
-    releaseTable(state->table_id);
+    unReserveTable(state->table_id);
 
     // TODO: Wake a group with smaller group size than your release table
     for (int i = 0; i < getTableSize(state->table_id); i++) {
