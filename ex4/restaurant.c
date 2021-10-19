@@ -12,8 +12,6 @@ pthread_mutex_t lock3 = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t lock4 = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t lock5 = PTHREAD_MUTEX_INITIALIZER;
 
-pthread_cond_t cond1 = PTHREAD_COND_INITIALIZER;
-
 int *vacancy_tables[5];
 int count_tables[5];
 pthread_mutex_t mutex_tables[5];
@@ -29,14 +27,12 @@ struct Queue
 
 struct Queue *createQueue()
 {
-  struct Queue *queue = (struct Queue *)malloc(
-      sizeof(struct Queue));
+  struct Queue *queue = (struct Queue *)malloc(sizeof(struct Queue));
   queue->capacity = 100;
   queue->head = queue->size = 0;
 
   queue->tail = queue->capacity - 1;
-  queue->array = (pthread_cond_t **)malloc(
-      queue->capacity * sizeof(pthread_cond_t *));
+  queue->array = (pthread_cond_t **)malloc(queue->capacity * sizeof(pthread_cond_t *));
   return queue;
 }
 
@@ -58,19 +54,6 @@ pthread_cond_t *dequeue(struct Queue *queue)
   queue->head = (queue->head + 1) % queue->capacity;
   queue->size = queue->size - 1;
   return item;
-}
-
-pthread_cond_t *peek(struct Queue *queue)
-{
-  if (queue->size == 0)
-    return NULL;
-  pthread_cond_t *item = queue->array[queue->head];
-  return item;
-}
-
-int isEmpty(struct Queue *queue)
-{
-  return (queue->size == 0);
 }
 
 int reserveTable(int num_people)
@@ -111,18 +94,21 @@ void unReserveTable(int table_id)
   }
 }
 
+pthread_cond_t *peek(struct Queue *queue)
+{
+  if (queue->size == 0)
+    return NULL;
+  pthread_cond_t *item = queue->array[queue->head];
+  return item;
+}
+
+int isEmpty(struct Queue *queue)
+{
+  return (queue->size == 0);
+}
+
 void restaurant_init(int num_tables[5])
 {
-  // Write initialization code here (called once at the start of the program).
-  // It is guaranteed that num_tables is an array of length 5.
-  // TODO
-
-  mutex_tables[0] = lock1;
-  mutex_tables[1] = lock2;
-  mutex_tables[2] = lock3;
-  mutex_tables[3] = lock4;
-  mutex_tables[4] = lock5;
-
   for (int i = 0; i < 5; i++)
   {
     vacancy_tables[i] = 0;
@@ -134,6 +120,11 @@ void restaurant_init(int num_tables[5])
       vacancy_tables[i][j] = 1;
     }
   }
+  mutex_tables[0] = lock1;
+  mutex_tables[1] = lock2;
+  mutex_tables[2] = lock3;
+  mutex_tables[3] = lock4;
+  mutex_tables[4] = lock5;
 }
 
 void restaurant_destroy(void)
@@ -145,7 +136,6 @@ void restaurant_destroy(void)
     free(vacancy_tables[i]);
   }
 
-  pthread_cond_destroy(&cond1);
   pthread_mutex_destroy(&lock1);
   pthread_mutex_destroy(&lock2);
   pthread_mutex_destroy(&lock3);
@@ -175,11 +165,13 @@ int request_for_table(group_state *state, int num_people)
   on_enqueue();
   if (res == -1)
   {
-    pthread_cond_t *cond = &cond1;
+    pthread_cond_t condition = PTHREAD_COND_INITIALIZER;
+    pthread_cond_t *cond = &condition;
     enqueue(queues[index], cond);
     pthread_cond_wait(cond, lock);
     res = reserveTable(num_people);
     dequeue(queues[index]);
+    pthread_cond_destroy(&condition);
   }
   state->table_id = res;
   pthread_mutex_unlock(lock);

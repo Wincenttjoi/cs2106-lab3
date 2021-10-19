@@ -8,7 +8,6 @@
 
 // // declaring mutex
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t condition = PTHREAD_COND_INITIALIZER;
 sem_t mutex;
 
 int *vacancy_tables[5];
@@ -190,7 +189,6 @@ void restaurant_destroy(void)
   }
   pthread_mutex_destroy(&lock);
   sem_destroy(&mutex);
-  pthread_cond_destroy(&condition);
 }
 
 int request_for_table(group_state *state, int num_people)
@@ -211,6 +209,7 @@ int request_for_table(group_state *state, int num_people)
   on_enqueue();
   if (res == -1)
   {
+    pthread_cond_t condition = PTHREAD_COND_INITIALIZER;
     pthread_cond_t *cond = &condition;
     sem_wait(&mutex);
     enqueue(queues[index], cond, counter);
@@ -219,6 +218,7 @@ int request_for_table(group_state *state, int num_people)
     pthread_cond_wait(cond, &lock);
     res = reserveTable(num_people);
     dequeue(queues[index]);
+    pthread_cond_destroy(&condition);
   }
   state->table_id = res;
   pthread_mutex_unlock(&lock);
@@ -230,7 +230,7 @@ void leave_table(group_state *state)
   pthread_mutex_lock(&lock);
   unReserveTable(state->table_id);
 
-  int index = getGroup(queues, getTableSize(state->table_id) + 1);
+  int index = getGroup(queues, getTableSize(state->table_id));
   if (index != INT_MAX)
   {
     pthread_cond_t *cond = peek(queues[index]);
