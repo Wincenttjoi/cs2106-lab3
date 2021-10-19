@@ -69,8 +69,7 @@ int peekIndex(struct Queue *queue, int num)
 {
   if (queue->size == 0)
     return INT_MAX;
-  int temp = queue->head + num;
-  int index = queue->array_temp[temp];
+  int index = queue->array_temp[queue->head + num];
   return index;
 }
 
@@ -108,15 +107,12 @@ int reserveTable(int num_people)
   {
     for (int j = 0; j < count_tables[i]; j++)
     {
-      if (vacancy_tables[i][j] - num_people >= 0)
+      if ((vacancy_tables[i][j] - num_people >= 0) && (vacancy_tables[i][j] < minimum))
       {
-        if (vacancy_tables[i][j] < minimum)
-        {
-          minimum = vacancy_tables[i][j];
-          temp_i = i;
-          temp_j = j;
-          temp_counter = counter + j;
-        }
+        minimum = vacancy_tables[i][j];
+        temp_i = i;
+        temp_j = j;
+        temp_counter = counter + j;
       }
     }
     counter += count_tables[i];
@@ -239,11 +235,8 @@ void restaurant_destroy(void)
 int request_for_table(group_state *state, int num_people)
 {
   int res;
-  // store info into state
   state->group_size = num_people;
-  // retrieve mutex and conds of tablesize
   int index = num_people - 1;
-  // pthread_mutex_t lock = mutex_tables[index];
   pthread_mutex_lock(&lock);
   if (queues[index]->size == 0)
   {
@@ -264,7 +257,6 @@ int request_for_table(group_state *state, int num_people)
     counter += 1;
     sem_post(&mutex);
     pthread_cond_wait(cond, &lock);
-    // printf("\nlemme see\n");
     res = reserveTable(num_people);
     dequeue(queues[index]);
     pthread_cond_destroy(&cond1);

@@ -15,7 +15,6 @@ struct Queue *queues[5];
 int count_tables[5];
 int counter = 0;
 
-// A structure to represent a queue
 struct Queue
 {
   unsigned capacity;
@@ -26,17 +25,13 @@ struct Queue
 
 struct Queue *createQueue()
 {
-  struct Queue *queue = (struct Queue *)malloc(
-      sizeof(struct Queue));
+  struct Queue *queue = (struct Queue *)malloc(sizeof(struct Queue));
   queue->capacity = 100;
   queue->head = queue->size = 0;
 
-  // This is important, see the enqueue
   queue->tail = queue->capacity - 1;
-  queue->array = (pthread_cond_t **)malloc(
-      queue->capacity * sizeof(pthread_cond_t *));
-  queue->array_temp = (int *)malloc(
-      queue->capacity * sizeof(int));
+  queue->array = (pthread_cond_t **)malloc(queue->capacity * sizeof(pthread_cond_t *));
+  queue->array_temp = (int *)malloc(queue->capacity * sizeof(int));
   return queue;
 }
 
